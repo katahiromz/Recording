@@ -40,10 +40,6 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    PlaySound(MAKEINTRESOURCE(1), GetModuleHandle(NULL),
-              SND_ASYNC | SND_LOOP | SND_NODEFAULT |
-              SND_RESOURCE);
-
     HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
     if (FAILED(hr))
         return -1;

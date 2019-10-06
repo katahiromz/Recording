@@ -187,6 +187,9 @@ BOOL Recording::Stop()
         CloseHandle(m_hThread);
         m_hThread = NULL;
     }
+
+    ::PlaySound(NULL, NULL, 0);
+
     return TRUE;
 }
 
@@ -222,8 +225,8 @@ DWORD Recording::ThreadProc()
     {
         hr = WriteHeader(pwfx);
         assert(SUCCEEDED(hr));
-        m_pwfx = pwfx;
     }
+    m_pwfx = pwfx;
     ::LeaveCriticalSection(&m_lock);
 
     UINT32 nBlockAlign = m_pwfx->nBlockAlign;
@@ -238,7 +241,13 @@ DWORD Recording::ThreadProc()
     hr = m_pAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
                                     StreamFlags,
                                     0, 0, m_pwfx, 0);
-    if (hr == AUDCLNT_E_WRONG_ENDPOINT_TYPE)
+    if (SUCCEEDED(hr))
+    {
+        ::PlaySound(MAKEINTRESOURCE(1), GetModuleHandle(NULL),
+                    SND_ASYNC | SND_LOOP | SND_NODEFAULT |
+                    SND_RESOURCE);
+    }
+    else if (hr == AUDCLNT_E_WRONG_ENDPOINT_TYPE)
     {
         StreamFlags &= ~AUDCLNT_STREAMFLAGS_LOOPBACK;
         hr = m_pAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
