@@ -216,6 +216,9 @@ DWORD Recording::ThreadProc()
 {
     HRESULT hr;
 
+    if (m_pAudioClient)
+        m_pAudioClient.Detach();
+
     hr = m_pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, NULL, (void**)&m_pAudioClient);
     assert(SUCCEEDED(hr));
 
@@ -265,6 +268,9 @@ DWORD Recording::ThreadProc()
 
     hr = m_pAudioClient->SetEventHandle(m_hWakeUp);
     assert(SUCCEEDED(hr));
+
+    if (m_pCaptureClient)
+        m_pCaptureClient.Detach();
 
     hr = m_pAudioClient->GetService(__uuidof(IAudioCaptureClient), (void**)&m_pCaptureClient);
     assert(SUCCEEDED(hr));
@@ -324,8 +330,11 @@ DWORD Recording::ThreadProc()
         }
     }
 
-    FinishFile();
-    FixupFile();
+    if (m_hFile)
+    {
+        FinishFile();
+        FixupFile();
+    }
 
     return 0;
 }
