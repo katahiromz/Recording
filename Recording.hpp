@@ -3,7 +3,9 @@
 
 #include <windows.h>
 #include <mmsystem.h>
+#ifdef DEFINE_GUIDS
 #include <initguid.h>
+#endif
 #include <mmdeviceapi.h>
 #include <audioclient.h>
 #include <avrt.h>

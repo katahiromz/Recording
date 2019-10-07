@@ -1,3 +1,4 @@
+#define DEFINE_GUIDS
 #include "Recording.hpp"
 #include "resource.h"
 
@@ -109,6 +110,7 @@ void Recording::FinishFile()
     MMRESULT result;
 
     ::EnterCriticalSection(&m_lock);
+    if (m_hFile)
     {
         result = mmioAscend(m_hFile, &m_ckData, 0);
         assert(result == MMSYSERR_NOERROR);
@@ -130,7 +132,11 @@ void Recording::FixupFile()
 
     ::EnterCriticalSection(&m_lock);
     m_hFile = mmioOpen(szFileName, &mi, MMIO_WRITE | MMIO_READWRITE);
-    assert(m_hFile);
+    if (!m_hFile)
+    {
+        ::LeaveCriticalSection(&m_lock);
+        return;
+    }
 
     MMRESULT result;
 

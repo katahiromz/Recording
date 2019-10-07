@@ -105,6 +105,7 @@ class MMainWnd
     HINSTANCE m_hInst;
     HWND m_hwnd;
     devices_t m_devices;
+    Recording m_rec;
 
 public:
     MMainWnd(HINSTANCE hInst) : m_hInst(hInst), m_hwnd(NULL)
@@ -132,15 +133,33 @@ public:
 
         ComboBox_SetCurSel(hCmb1, 0);
 
+        EnableWindow(GetDlgItem(hwnd, psh1), TRUE);
+        EnableWindow(GetDlgItem(hwnd, psh2), FALSE);
+
         return TRUE;
     }
 
     void OnPsh1(HWND hwnd)
     {
+        HWND hCmb1 = GetDlgItem(hwnd, cmb1);
+        INT iDev = ComboBox_GetCurSel(hCmb1);        
+        if (iDev == CB_ERR)
+            return;
+
+        m_rec.OpenFile();
+        m_rec.SetDevice(m_devices[iDev]);
+        if (m_rec.Start())
+        {
+            EnableWindow(GetDlgItem(hwnd, psh1), FALSE);
+            EnableWindow(GetDlgItem(hwnd, psh2), TRUE);
+        }
     }
 
     void OnPsh2(HWND hwnd)
     {
+        m_rec.Stop();
+        EnableWindow(GetDlgItem(hwnd, psh1), TRUE);
+        EnableWindow(GetDlgItem(hwnd, psh2), FALSE);
     }
 
     void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
@@ -163,7 +182,6 @@ public:
     virtual INT_PTR CALLBACK
     DialogProcDx(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
-        ErrorBoxDx(NULL, L"OK");
         switch (uMsg)
         {
             HANDLE_MSG(hwnd, WM_INITDIALOG, OnInitDialog);
@@ -192,7 +210,11 @@ public:
         {
             pMainWnd = MMainWnd::GetUser(hwnd);
         }
-        return pMainWnd->DialogProcDx(hwnd, uMsg, wParam, lParam);
+        if (pMainWnd)
+        {
+            return pMainWnd->DialogProcDx(hwnd, uMsg, wParam, lParam);
+        }
+        return 0;
     }
 
     INT_PTR DialogBoxDx(HWND hwnd, LPCTSTR pszTemplate)
