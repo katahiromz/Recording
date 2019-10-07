@@ -20,14 +20,33 @@ IDR_SILENT_WAV WAVE "res/Wave_1.wav"
 
 //////////////////////////////////////////////////////////////////////////////
 
+LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
+
+//////////////////////////////////////////////////////////////////////////////
+// RT_DIALOG
+
+IDD_MAIN DIALOG 0, 0, 222, 80
+CAPTION "Recording"
+STYLE DS_CENTER | DS_MODALFRAME | WS_POPUPWINDOW | WS_CAPTION
+FONT 8, "Tahoma"
+{
+    LTEXT "&Input Device:", IDC_STATIC, 5, 7, 55, 12
+    COMBOBOX cmb1, 65, 5, 150, 300, CBS_HASSTRINGS | CBS_AUTOHSCROLL | CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON "&Rec", psh1, 46, 38, 60, 14
+    PUSHBUTTON "&Stop", psh2, 114, 38, 60, 14
+    CONTROL "", scr1, "msctls_progress32", 0, 5, 65, 210, 12
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
 LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
 
 //////////////////////////////////////////////////////////////////////////////
 // RT_DIALOG
 
-100 DIALOG 0, 0, 222, 80
+IDD_MAIN DIALOG 0, 0, 222, 80
 CAPTION "Recording"
-STYLE DS_MODALFRAME | WS_POPUPWINDOW | WS_CAPTION
+STYLE DS_CENTER | DS_MODALFRAME | WS_POPUPWINDOW | WS_CAPTION
 FONT 9, "MS UI Gothic"
 {
     LTEXT "入力デバイス(&I):", IDC_STATIC, 5, 7, 55, 12

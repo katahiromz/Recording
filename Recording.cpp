@@ -1,6 +1,6 @@
 #define DEFINE_GUIDS
 #include "Recording.hpp"
-#include "resource.h"
+#include "win/resource.h"
 
 Recording::Recording()
     : m_pwfx(NULL)
