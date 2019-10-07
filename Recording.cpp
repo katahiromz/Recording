@@ -1,4 +1,5 @@
 #include "Recording.hpp"
+#include "resource.h"
 
 Recording::Recording()
     : m_pwfx(NULL)
@@ -243,7 +244,7 @@ DWORD Recording::ThreadProc()
                                     0, 0, m_pwfx, 0);
     if (SUCCEEDED(hr))
     {
-        ::PlaySound(MAKEINTRESOURCE(1), GetModuleHandle(NULL),
+        ::PlaySound(MAKEINTRESOURCE(IDR_SILENT_WAV), GetModuleHandle(NULL),
                     SND_ASYNC | SND_LOOP | SND_NODEFAULT |
                     SND_RESOURCE);
     }
