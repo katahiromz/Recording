@@ -9,6 +9,8 @@
 
 #define IDR_SILENT_WAV                      1
 
+#define IDS_FORMAT                          100
+
 #ifdef APSTUDIO_INVOKED
     #ifndef APSTUDIO_READONLY_SYMBOLS
         #define _APS_NO_MFC                 1

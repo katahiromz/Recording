@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <strsafe.h>
+#include "resource.h"
 
 void ErrorBoxDx(HWND hwnd, LPCTSTR pszText)
 {
@@ -139,7 +140,8 @@ public:
         for (auto& format : m_formats)
         {
             TCHAR szText[64];
-            StringCbPrintf(szText, sizeof(szText), LoadStringDx(100),
+            StringCbPrintf(szText, sizeof(szText),
+                LoadStringDx(IDS_FORMAT),
                 format.samples, format.bits, format.channels);
             ComboBox_AddString(hCmb2, szText);
         }
