@@ -139,8 +139,7 @@ public:
         for (auto& format : m_formats)
         {
             TCHAR szText[64];
-            StringCbPrintf(szText, sizeof(szText),
-                TEXT("%luHz, %u-bits, %u channels"),
+            StringCbPrintf(szText, sizeof(szText), LoadStringDx(100),
                 format.samples, format.bits, format.channels);
             ComboBox_AddString(hCmb2, szText);
         }
