@@ -3,7 +3,8 @@
 #include "win/resource.h"
 
 static BOOL
-save_pcm_wave_file(LPTSTR lpszFileName, LPWAVEFORMATEX lpwf, const void *lpWaveData, DWORD dwDataSize)
+save_pcm_wave_file(LPTSTR lpszFileName, LPWAVEFORMATEX lpwf,
+                   LPCVOID lpWaveData, DWORD dwDataSize)
 {
     HMMIO    hmmio;
     MMCKINFO mmckRiff;
