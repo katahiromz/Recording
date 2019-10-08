@@ -2,17 +2,55 @@
 #include "Recording.hpp"
 #include "win/resource.h"
 
+static BOOL
+save_pcm_wave_file(LPTSTR lpszFileName, LPWAVEFORMATEX lpwf, const void *lpWaveData, DWORD dwDataSize)
+{
+    HMMIO    hmmio;
+    MMCKINFO mmckRiff;
+    MMCKINFO mmckFmt;
+    MMCKINFO mmckData;
+    
+    hmmio = mmioOpen(lpszFileName, NULL, MMIO_CREATE | MMIO_WRITE);
+    if (hmmio == NULL)
+        return FALSE;
+
+    mmckRiff.fccType = mmioStringToFOURCC(TEXT("WAVE"), 0);
+    mmioCreateChunk(hmmio, &mmckRiff, MMIO_CREATERIFF);
+
+    mmckFmt.ckid = mmioStringToFOURCC(TEXT("fmt "), 0);
+    mmioCreateChunk(hmmio, &mmckFmt, 0);
+    mmioWrite(hmmio, (const char *)lpwf, sizeof(PCMWAVEFORMAT));
+    mmioAscend(hmmio, &mmckFmt, 0);
+
+    mmckData.ckid = mmioStringToFOURCC(TEXT("data"), 0);
+    mmioCreateChunk(hmmio, &mmckData, 0);
+    mmioWrite(hmmio, (const char *)lpWaveData, dwDataSize);
+    mmioAscend(hmmio, &mmckData, 0);
+
+    mmioAscend(hmmio, &mmckRiff, 0);
+    mmioClose(hmmio, 0);
+
+    return TRUE;
+}
+
 Recording::Recording()
-    : m_pwfx(NULL)
-    , m_hShutdownEvent(NULL)
+    : m_hShutdownEvent(NULL)
     , m_hWakeUp(NULL)
     , m_hThread(NULL)
-    , m_hFile(NULL)
 {
     m_hShutdownEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
     m_hWakeUp = ::CreateEvent(NULL, FALSE, FALSE, NULL);
     m_nFrames = 0;
     ::InitializeCriticalSection(&m_lock);
+
+    ZeroMemory(&m_wfx, sizeof(m_wfx));
+    m_wfx.wFormatTag = WAVE_FORMAT_PCM;
+    m_wfx.nChannels = 2;
+    m_wfx.nSamplesPerSec = 44100;
+    m_wfx.wBitsPerSample = 16;
+    m_wfx.nBlockAlign = m_wfx.wBitsPerSample * m_wfx.nChannels / 8;
+    m_wfx.nAvgBytesPerSec = m_wfx.nSamplesPerSec * m_wfx.nBlockAlign;
+    m_wfx.cbSize = 0;
 }
 
 Recording::~Recording()
@@ -32,7 +70,6 @@ Recording::~Recording()
         ::CloseHandle(m_hThread);
         m_hThread = NULL;
     }
-    CloseFile();
 
     ::DeleteCriticalSection(&m_lock);
 }
@@ -40,141 +77,6 @@ Recording::~Recording()
 void Recording::SetDevice(CComPtr<IMMDevice> pDevice)
 {
     m_pDevice = pDevice;
-}
-
-BOOL Recording::OpenFile()
-{
-    CloseFile();
-
-    WCHAR szFileName[] = L"sound.wav";
-    MMIOINFO mi = {0};
-
-    ::EnterCriticalSection(&m_lock);
-    m_hFile = mmioOpen(szFileName, &mi, MMIO_WRITE | MMIO_CREATE);
-    if (m_pwfx)
-    {
-        WriteHeader(m_pwfx);
-    }
-    ::LeaveCriticalSection(&m_lock);
-
-    return m_hFile != NULL;
-}
-
-BOOL Recording::WriteHeader(const WAVEFORMATEX *pwfx)
-{
-    MMRESULT result;
-
-    m_ckRIFF.ckid = MAKEFOURCC('R', 'I', 'F', 'F');
-    m_ckRIFF.fccType = MAKEFOURCC('W', 'A', 'V', 'E');
-
-    result = mmioCreateChunk(m_hFile, &m_ckRIFF, MMIO_CREATERIFF);
-    assert(result == MMSYSERR_NOERROR);
-
-    MMCKINFO chunk;
-    chunk.ckid = MAKEFOURCC('f', 'm', 't', ' ');
-    result = mmioCreateChunk(m_hFile, &chunk, 0);
-    assert(result == MMSYSERR_NOERROR);
-
-    LONG lBytesInWfx = sizeof(WAVEFORMATEX) + pwfx->cbSize;
-    LONG lBytesWritten = mmioWrite(m_hFile,
-        reinterpret_cast<PCHAR>(const_cast<LPWAVEFORMATEX>(pwfx)),
-        lBytesInWfx);
-
-    if (lBytesWritten != lBytesInWfx) {
-        return FALSE;
-    }
-
-    result = mmioAscend(m_hFile, &chunk, 0);
-    assert(result == MMSYSERR_NOERROR);
-
-    chunk.ckid = MAKEFOURCC('f', 'a', 'c', 't');
-    result = mmioCreateChunk(m_hFile, &chunk, 0);
-    assert(result == MMSYSERR_NOERROR);
-
-    DWORD frames = 0;
-    lBytesWritten = mmioWrite(m_hFile, reinterpret_cast<PCHAR>(&frames), sizeof(frames));
-    assert(lBytesWritten == sizeof(frames));
-
-    result = mmioAscend(m_hFile, &chunk, 0);
-    assert(result == MMSYSERR_NOERROR);
-
-    m_ckData.ckid = MAKEFOURCC('d', 'a', 't', 'a');
-    result = mmioCreateChunk(m_hFile, &m_ckData, 0);
-    assert(result == MMSYSERR_NOERROR);
-
-    return TRUE;
-}
-
-void Recording::FinishFile()
-{
-    MMRESULT result;
-
-    ::EnterCriticalSection(&m_lock);
-    if (m_hFile)
-    {
-        result = mmioAscend(m_hFile, &m_ckData, 0);
-        assert(result == MMSYSERR_NOERROR);
-
-        result = mmioAscend(m_hFile, &m_ckRIFF, 0);
-        assert(result == MMSYSERR_NOERROR);
-    }
-    ::LeaveCriticalSection(&m_lock);
-
-    CloseFile();
-}
-
-void Recording::FixupFile()
-{
-    CloseFile();
-
-    WCHAR szFileName[] = L"sound.wav";
-    MMIOINFO mi = {0};
-
-    ::EnterCriticalSection(&m_lock);
-    m_hFile = mmioOpen(szFileName, &mi, MMIO_WRITE | MMIO_READWRITE);
-    if (!m_hFile)
-    {
-        ::LeaveCriticalSection(&m_lock);
-        return;
-    }
-
-    MMRESULT result;
-
-    MMCKINFO ckRIFF = {0};
-    ckRIFF.ckid = MAKEFOURCC('W', 'A', 'V', 'E');
-    result = mmioDescend(m_hFile, &ckRIFF, NULL, MMIO_FINDRIFF);
-    assert(result == MMSYSERR_NOERROR);
-
-    MMCKINFO ckFact = {0};
-    ckFact.ckid = MAKEFOURCC('f', 'a', 'c', 't');
-    result = mmioDescend(m_hFile, &ckFact, &ckRIFF, MMIO_FINDCHUNK);
-    assert(result == MMSYSERR_NOERROR);
-
-    LONG lBytesWritten = mmioWrite(m_hFile,
-        reinterpret_cast<PCHAR>(&m_nFrames),
-        sizeof(m_nFrames));
-
-    result = mmioAscend(m_hFile, &ckFact, 0);
-    assert(result == MMSYSERR_NOERROR);
-
-    ::LeaveCriticalSection(&m_lock);
-
-    CloseFile();
-}
-
-void Recording::CloseFile()
-{
-    ::EnterCriticalSection(&m_lock);
-    m_pwfx = NULL;
-    if (m_hFile)
-    {
-        mmioClose(m_hFile, 0);
-        m_hFile = NULL;
-    }
-    ::LeaveCriticalSection(&m_lock);
-
-    ZeroMemory(&m_ckRIFF, sizeof(m_ckRIFF));
-    ZeroMemory(&m_ckData, sizeof(m_ckData));
 }
 
 BOOL Recording::Start()
@@ -226,31 +128,27 @@ DWORD Recording::ThreadProc()
     hr = m_pAudioClient->GetDevicePeriod(&DevicePeriod, NULL);
     assert(SUCCEEDED(hr));
 
-    WAVEFORMATEX *pwfx;
-    hr = m_pAudioClient->GetMixFormat(&pwfx);
-    assert(SUCCEEDED(hr));
+    m_wave_data.clear();
 
-    ::EnterCriticalSection(&m_lock);
-    if (m_hFile && !m_pwfx)
-    {
-        hr = WriteHeader(pwfx);
-        assert(SUCCEEDED(hr));
-    }
-    m_pwfx = pwfx;
-    ::LeaveCriticalSection(&m_lock);
-
-    UINT32 nBlockAlign = m_pwfx->nBlockAlign;
-    WORD wBitsPerSample = m_pwfx->wBitsPerSample;
+    UINT32 nBlockAlign = m_wfx.nBlockAlign;
+    WORD wBitsPerSample = m_wfx.wBitsPerSample;
     m_nFrames = 0;
 
+#ifndef AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM
+    #define AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM 0x80000000
+#endif
+#ifndef AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY
+    #define AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY 0x08000000
+#endif
     DWORD StreamFlags =
         AUDCLNT_STREAMFLAGS_EVENTCALLBACK |
         AUDCLNT_STREAMFLAGS_NOPERSIST |
+        AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM |
         AUDCLNT_STREAMFLAGS_LOOPBACK;
 
     hr = m_pAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
                                     StreamFlags,
-                                    0, 0, m_pwfx, 0);
+                                    0, 0, &m_wfx, 0);
     if (SUCCEEDED(hr))
     {
         ::PlaySound(MAKEINTRESOURCE(IDR_SILENT_WAV), GetModuleHandle(NULL),
@@ -262,7 +160,7 @@ DWORD Recording::ThreadProc()
         StreamFlags &= ~AUDCLNT_STREAMFLAGS_LOOPBACK;
         hr = m_pAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
                                         StreamFlags,
-                                        0, 0, m_pwfx, 0);
+                                        0, 0, &m_wfx, 0);
     }
     assert(SUCCEEDED(hr));
 
@@ -303,10 +201,7 @@ DWORD Recording::ThreadProc()
             LONG cbToWrite = uNumFrames * nBlockAlign;
 
             ::EnterCriticalSection(&m_lock);
-            if (m_hFile)
-            {
-                LONG cbWritten = mmioWrite(m_hFile, reinterpret_cast<PCHAR>(pbData), cbToWrite);
-            }
+            m_wave_data.insert(m_wave_data.end(), pbData, pbData + cbToWrite);
             ::LeaveCriticalSection(&m_lock);
 
             m_nFrames += uNumFrames;
@@ -330,11 +225,14 @@ DWORD Recording::ThreadProc()
         }
     }
 
-    if (m_hFile)
-    {
-        FinishFile();
-        FixupFile();
-    }
+    SaveToFile();
 
     return 0;
+}
+
+void Recording::SaveToFile()
+{
+    WCHAR szFileName[] = L"sound.wav";
+    save_pcm_wave_file(szFileName, &m_wfx,
+                       m_wave_data.data(), m_wave_data.size());
 }

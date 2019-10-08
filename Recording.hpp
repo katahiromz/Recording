@@ -11,6 +11,7 @@
 #include <avrt.h>
 #include <functiondiscoverykeys_devpkey.h>
 #include "CComPtr.hpp"
+#include <vector>
 #include <cstdio>
 
 class Recording
@@ -21,19 +22,17 @@ public:
 
     void SetDevice(CComPtr<IMMDevice> pDevice);
 
-    BOOL OpenFile();
     BOOL Start();
     BOOL Stop();
-    void CloseFile();
+
+    void SaveToFile();
 
     DWORD ThreadProc();
 
 protected:
-    WAVEFORMATEX *m_pwfx;
     HANDLE m_hShutdownEvent;
     HANDLE m_hWakeUp;
     HANDLE m_hThread;
-    HMMIO m_hFile;
     CComPtr<IMMDevice> m_pDevice;
     CComPtr<IAudioClient> m_pAudioClient;
     CComPtr<IAudioCaptureClient> m_pCaptureClient;
@@ -41,11 +40,10 @@ protected:
     MMCKINFO m_ckData;
     CRITICAL_SECTION m_lock;
     UINT32 m_nFrames;
+    WAVEFORMATEX m_wfx;
+    std::vector<BYTE> m_wave_data;
 
     static DWORD WINAPI ThreadFunction(LPVOID pContext);
-    BOOL WriteHeader(const WAVEFORMATEX *pwfx);
-    void FixupFile();
-    void FinishFile();
 };
 
 #endif  // ndef RECORDING_HPP_

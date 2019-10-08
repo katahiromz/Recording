@@ -146,7 +146,6 @@ public:
         if (iDev == CB_ERR)
             return;
 
-        m_rec.OpenFile();
         m_rec.SetDevice(m_devices[iDev]);
         if (m_rec.Start())
         {

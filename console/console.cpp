@@ -21,10 +21,9 @@ int JustDoIt(INT iDev)
     Recording rec;
     rec.SetDevice(pDevice);
 
-    rec.OpenFile();
-
     rec.Start();
     puts("Press Enter key to stop recording");
+    fflush(stdout);
     getchar();
     rec.Stop();
 
