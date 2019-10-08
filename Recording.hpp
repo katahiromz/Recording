@@ -14,6 +14,19 @@
 #include <vector>
 #include <cstdio>
 
+struct WAVE_FORMAT_INFO
+{
+    DWORD flags;
+    DWORD samples;
+    WORD bits;
+    WORD channels;
+};
+
+bool get_wave_formats(std::vector<WAVE_FORMAT_INFO>& formats);
+
+bool save_pcm_wave_file(LPTSTR lpszFileName, LPWAVEFORMATEX lpwf,
+                        LPCVOID lpWaveData, DWORD dwDataSize);
+
 class Recording
 {
 public:

@@ -2,9 +2,42 @@
 #include "Recording.hpp"
 #include "win/resource.h"
 
-static BOOL
-save_pcm_wave_file(LPTSTR lpszFileName, LPWAVEFORMATEX lpwf,
-                   LPCVOID lpWaveData, DWORD dwDataSize)
+static const WAVE_FORMAT_INFO s_wave_formats[] =
+{
+    { WAVE_FORMAT_1M08, 11025, 8, 1 },
+    { WAVE_FORMAT_1S08, 11025, 8, 2 },
+    { WAVE_FORMAT_1M16, 11025, 16, 1 },
+    { WAVE_FORMAT_1S16, 11025, 16, 2 },
+    { WAVE_FORMAT_2M08, 22050, 8, 1 },
+    { WAVE_FORMAT_2S08, 22050, 8, 2 },
+    { WAVE_FORMAT_2M16, 22050, 16, 1 },
+    { WAVE_FORMAT_2S16, 22050, 16, 2 },
+    { WAVE_FORMAT_4M08, 44100, 8, 1 },
+    { WAVE_FORMAT_4S08, 44100, 8, 2 },
+    { WAVE_FORMAT_4M16, 44100, 16, 1 },
+    { WAVE_FORMAT_4S16, 44100, 16, 2 },
+    { WAVE_FORMAT_44M08, 44100, 8, 1 },
+    { WAVE_FORMAT_44S08, 44100, 8, 2 },
+    { WAVE_FORMAT_44M16, 44100, 16, 1 },
+    { WAVE_FORMAT_44S16, 44100, 16, 2 },
+    { WAVE_FORMAT_48M08, 48000, 8, 1 },
+    { WAVE_FORMAT_48S08, 48000, 8, 2 },
+    { WAVE_FORMAT_48M16, 48000, 16, 1 },
+    { WAVE_FORMAT_48S16, 48000, 16, 2 },
+    { WAVE_FORMAT_96M08, 96000, 8, 1 },
+    { WAVE_FORMAT_96S08, 96000, 8, 2 },
+    { WAVE_FORMAT_96M16, 96000, 16, 1 },
+    { WAVE_FORMAT_96S16, 96000, 16, 2 },
+};
+
+bool get_wave_formats(std::vector<WAVE_FORMAT_INFO>& formats)
+{
+    formats.assign(std::begin(s_wave_formats), std::end(s_wave_formats));
+    return true;
+}
+
+bool save_pcm_wave_file(LPTSTR lpszFileName, LPWAVEFORMATEX lpwf,
+                        LPCVOID lpWaveData, DWORD dwDataSize)
 {
     HMMIO    hmmio;
     MMCKINFO mmckRiff;
@@ -13,7 +46,7 @@ save_pcm_wave_file(LPTSTR lpszFileName, LPWAVEFORMATEX lpwf,
     
     hmmio = mmioOpen(lpszFileName, NULL, MMIO_CREATE | MMIO_WRITE);
     if (hmmio == NULL)
-        return FALSE;
+        return false;
 
     mmckRiff.fccType = mmioStringToFOURCC(TEXT("WAVE"), 0);
     mmioCreateChunk(hmmio, &mmckRiff, MMIO_CREATERIFF);
@@ -31,7 +64,7 @@ save_pcm_wave_file(LPTSTR lpszFileName, LPWAVEFORMATEX lpwf,
     mmioAscend(hmmio, &mmckRiff, 0);
     mmioClose(hmmio, 0);
 
-    return TRUE;
+    return true;
 }
 
 Recording::Recording()
