@@ -31,6 +31,8 @@ class Recording
 {
 public:
     WAVEFORMATEX m_wfx;
+    LONG m_nValue;
+    LONG m_nMax;
     void SetInfo(WORD nChannels, DWORD nSamplesPerSec, WORD wBitsPerSample);
 
     Recording();
@@ -59,6 +61,7 @@ protected:
     std::vector<BYTE> m_wave_data;
 
     static DWORD WINAPI ThreadFunction(LPVOID pContext);
+    void ScanBuffer(const BYTE *pb, DWORD cb, DWORD dwFlags);
 };
 
 #endif  // ndef RECORDING_HPP_

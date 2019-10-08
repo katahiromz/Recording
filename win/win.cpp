@@ -175,15 +175,19 @@ public:
             EnableWindow(GetDlgItem(hwnd, psh1), FALSE);
             EnableWindow(GetDlgItem(hwnd, psh2), TRUE);
             EnableWindow(GetDlgItem(hwnd, cmb2), FALSE);
+
+            SetTimer(hwnd, 999, 300, NULL);
         }
     }
 
     void OnPsh2(HWND hwnd)
     {
+        KillTimer(hwnd, 999);
         m_rec.Stop();
         EnableWindow(GetDlgItem(hwnd, psh1), TRUE);
         EnableWindow(GetDlgItem(hwnd, psh2), FALSE);
         EnableWindow(GetDlgItem(hwnd, cmb2), TRUE);
+        SendDlgItemMessage(hwnd, scr1, PBM_SETPOS, 0, 0);
     }
 
     void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
@@ -192,6 +196,9 @@ public:
         {
         case IDOK:
         case IDCANCEL:
+            KillTimer(hwnd, 999);
+            m_rec.Stop();
+            SendDlgItemMessage(hwnd, scr1, PBM_SETPOS, 0, 0);
             EndDialog(hwnd, id);
             break;
         case psh1:
@@ -203,6 +210,14 @@ public:
         }
     }
 
+    void OnTimer(HWND hwnd, UINT id)
+    {
+        LONG nValue = m_rec.m_nValue;
+        LONG nMax = m_rec.m_nMax;
+        SendDlgItemMessage(hwnd, scr1, PBM_SETRANGE32, 0, nMax);
+        SendDlgItemMessage(hwnd, scr1, PBM_SETPOS, nValue, 0);
+    }
+
     virtual INT_PTR CALLBACK
     DialogProcDx(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
@@ -210,6 +225,7 @@ public:
         {
             HANDLE_MSG(hwnd, WM_INITDIALOG, OnInitDialog);
             HANDLE_MSG(hwnd, WM_COMMAND, OnCommand);
+            HANDLE_MSG(hwnd, WM_TIMER, OnTimer);
         }
         return 0;
     }

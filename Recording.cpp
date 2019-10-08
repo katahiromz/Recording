@@ -68,7 +68,9 @@ bool save_pcm_wave_file(LPTSTR lpszFileName, LPWAVEFORMATEX lpwf,
 }
 
 Recording::Recording()
-    : m_hShutdownEvent(NULL)
+    : m_nValue(0)
+    , m_nMax(0)
+    , m_hShutdownEvent(NULL)
     , m_hWakeUp(NULL)
     , m_hThread(NULL)
 {
@@ -128,7 +130,12 @@ BOOL Recording::Start()
 BOOL Recording::Stop()
 {
     SetEvent(m_hShutdownEvent);
-    m_pAudioClient->Stop();
+
+    if (m_pAudioClient)
+    {
+        m_pAudioClient->Stop();
+    }
+
     if (m_hThread)
     {
         WaitForSingleObject(m_hThread, INFINITE);
@@ -151,6 +158,49 @@ DWORD WINAPI Recording::ThreadFunction(LPVOID pContext)
     DWORD ret = pRecording->ThreadProc();
     CoUninitialize();
     return ret;
+}
+
+void Recording::ScanBuffer(const BYTE *pb, DWORD cb, DWORD dwFlags)
+{
+    m_nMax = 0;
+    m_nValue = 0;
+    if (dwFlags & AUDCLNT_BUFFERFLAGS_SILENT)
+        return;
+
+    switch (m_wfx.wBitsPerSample)
+    {
+    case 8:
+        // A PCM WAVE 8-bit sample is unsigned 0-to-255 value.
+        for (DWORD i = 0; i < cb; ++i)
+        {
+            SHORT s = INT(pb[i]) - 0xFF / 2;
+            if (s < 0)
+                s = -s;
+            if (s > m_nValue)
+                m_nValue = s;
+        }
+        m_nMax = 0x7F;
+        break;
+    case 16:
+        // A PCM WAVE 16-bit sample is signed 16-bit value.
+        {
+            DWORD cw = cb / 2;
+            const WORD *pw = reinterpret_cast<const WORD *>(pb);
+            for (DWORD i = 0; i < cw; ++i)
+            {
+                SHORT s = pw[i];
+                if (s < 0)
+                    s = -s;
+                if (s > m_nValue)
+                    m_nValue = s;
+            }
+        }
+        m_nMax = 0x7FFF;
+        break;
+    default:
+        assert(0);
+        break;
+    }
 }
 
 DWORD Recording::ThreadProc()
@@ -242,6 +292,8 @@ DWORD Recording::ThreadProc()
             ::EnterCriticalSection(&m_lock);
             m_wave_data.insert(m_wave_data.end(), pbData, pbData + cbToWrite);
             ::LeaveCriticalSection(&m_lock);
+
+            ScanBuffer(pbData, cbToWrite, dwFlags);
 
             m_nFrames += uNumFrames;
             hr = m_pCaptureClient->ReleaseBuffer(uNumFrames);
