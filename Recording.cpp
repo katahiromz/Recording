@@ -1,6 +1,7 @@
 #define DEFINE_GUIDS
 #include "Recording.hpp"
 #include "win/resource.h"
+#include <cmath>
 
 static const WAVE_FORMAT_INFO s_wave_formats[] =
 {
@@ -167,19 +168,22 @@ void Recording::ScanBuffer(const BYTE *pb, DWORD cb, DWORD dwFlags)
     if (dwFlags & AUDCLNT_BUFFERFLAGS_SILENT)
         return;
 
+    float sum = 0;
+    double x;
     switch (m_wfx.wBitsPerSample)
     {
     case 8:
         // A PCM WAVE 8-bit sample is unsigned 0-to-255 value.
         for (DWORD i = 0; i < cb; ++i)
         {
-            SHORT s = INT(pb[i]) - 0xFF / 2;
-            if (s < 0)
-                s = -s;
-            if (s > m_nValue)
-                m_nValue = s;
+            INT s = INT(pb[i]) - 0xFF / 2;
+            float e = float(s) / (0xFF / 2);
+            sum += e * e;
         }
-        m_nMax = 0x7F;
+        x = std::sqrt(sum / cb);
+        x = 20 * std::log10(x);
+        m_nValue = 35 + INT(x);
+        m_nMax = 40;
         break;
     case 16:
         // A PCM WAVE 16-bit sample is signed 16-bit value.
@@ -188,14 +192,15 @@ void Recording::ScanBuffer(const BYTE *pb, DWORD cb, DWORD dwFlags)
             const WORD *pw = reinterpret_cast<const WORD *>(pb);
             for (DWORD i = 0; i < cw; ++i)
             {
-                SHORT s = pw[i];
-                if (s < 0)
-                    s = -s;
-                if (s > m_nValue)
-                    m_nValue = s;
+                INT s = SHORT(pw[i]);
+                float e = float(s) / (0xFFFF / 2);
+                sum += e * e;
             }
+            x = std::sqrt(sum / cw);
+            x = 20 * std::log10(x);
+            m_nValue = 35 + INT(x);
+            m_nMax = 40;
         }
-        m_nMax = 0x7FFF;
         break;
     default:
         assert(0);
