@@ -182,6 +182,7 @@ void Recording::ScanBuffer(const BYTE *pb, DWORD cb, DWORD dwFlags)
         }
         x = std::sqrt(sum / cb);
         x = 20 * std::log10(x);
+        // Now, x is decibel.
         m_nValue = 35 + INT(x);
         m_nMax = 40;
         break;
@@ -198,6 +199,7 @@ void Recording::ScanBuffer(const BYTE *pb, DWORD cb, DWORD dwFlags)
             }
             x = std::sqrt(sum / cw);
             x = 20 * std::log10(x);
+            // Now, x is decibel.
             m_nValue = 35 + INT(x);
             m_nMax = 40;
         }
