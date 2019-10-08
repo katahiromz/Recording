@@ -46,12 +46,17 @@ Recording::Recording()
 
     ZeroMemory(&m_wfx, sizeof(m_wfx));
     m_wfx.wFormatTag = WAVE_FORMAT_PCM;
-    m_wfx.nChannels = 2;
-    m_wfx.nSamplesPerSec = 44100;
-    m_wfx.wBitsPerSample = 16;
+    m_wfx.cbSize = 0;
+    SetInfo(1, 22050, 8);
+}
+
+void Recording::SetInfo(WORD nChannels, DWORD nSamplesPerSec, WORD wBitsPerSample)
+{
+    m_wfx.nChannels = nChannels;
+    m_wfx.nSamplesPerSec = nSamplesPerSec;
+    m_wfx.wBitsPerSample = wBitsPerSample;
     m_wfx.nBlockAlign = m_wfx.wBitsPerSample * m_wfx.nChannels / 8;
     m_wfx.nAvgBytesPerSec = m_wfx.nSamplesPerSec * m_wfx.nBlockAlign;
-    m_wfx.cbSize = 0;
 }
 
 Recording::~Recording()

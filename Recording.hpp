@@ -17,6 +17,9 @@
 class Recording
 {
 public:
+    WAVEFORMATEX m_wfx;
+    void SetInfo(WORD nChannels, DWORD nSamplesPerSec, WORD wBitsPerSample);
+
     Recording();
     ~Recording();
 
@@ -40,7 +43,6 @@ protected:
     MMCKINFO m_ckData;
     CRITICAL_SECTION m_lock;
     UINT32 m_nFrames;
-    WAVEFORMATEX m_wfx;
     std::vector<BYTE> m_wave_data;
 
     static DWORD WINAPI ThreadFunction(LPVOID pContext);
