@@ -1,8 +1,9 @@
-#include "Recording.hpp"
+#include "../Recording.hpp"
 #include <commctrl.h>
 #include <windowsx.h>
 #include <vector>
 #include <string>
+#include <strsafe.h>
 
 void ErrorBoxDx(HWND hwnd, LPCTSTR pszText)
 {
@@ -59,7 +60,7 @@ BOOL get_devices(devices_t& devices)
     // get an IMMDeviceEnumerator
     HRESULT hr;
     CComPtr<IMMDeviceEnumerator> pMMDeviceEnumerator;
-    hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, 
+    hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL,
                           __uuidof(IMMDeviceEnumerator), (void**)&pMMDeviceEnumerator);
     if (FAILED(hr))
     {
@@ -106,17 +107,18 @@ class MMainWnd
     HWND m_hwnd;
     devices_t m_devices;
     Recording m_rec;
+    std::vector<WAVE_FORMAT_INFO> m_formats;
 
 public:
     MMainWnd(HINSTANCE hInst) : m_hInst(hInst), m_hwnd(NULL)
     {
         ::InitCommonControls();
+
+        get_wave_formats(m_formats);
     }
 
     BOOL OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
     {
-        HWND hCmb1 = GetDlgItem(hwnd, cmb1);
-
         if (!get_devices(m_devices))
         {
             ErrorBoxDx(hwnd, TEXT("DoGetDevices"));
@@ -124,17 +126,29 @@ public:
             return FALSE;
         }
 
+        HWND hCmb1 = GetDlgItem(hwnd, cmb1);
         std::wstring name;
         for (auto& dev : m_devices)
         {
             get_device_name(dev, name);
             ComboBox_AddString(hCmb1, name.c_str());
         }
-
         ComboBox_SetCurSel(hCmb1, 0);
+
+        HWND hCmb2 = GetDlgItem(hwnd, cmb2);
+        for (auto& format : m_formats)
+        {
+            TCHAR szText[64];
+            StringCbPrintf(szText, sizeof(szText),
+                TEXT("%luHz, %u-bits, %u channels"),
+                format.samples, format.bits, format.channels);
+            ComboBox_AddString(hCmb2, szText);
+        }
+        ComboBox_SetCurSel(hCmb2, 0);
 
         EnableWindow(GetDlgItem(hwnd, psh1), TRUE);
         EnableWindow(GetDlgItem(hwnd, psh2), FALSE);
+        EnableWindow(GetDlgItem(hwnd, cmb2), TRUE);
 
         return TRUE;
     }
@@ -142,15 +156,24 @@ public:
     void OnPsh1(HWND hwnd)
     {
         HWND hCmb1 = GetDlgItem(hwnd, cmb1);
-        INT iDev = ComboBox_GetCurSel(hCmb1);        
-        if (iDev == CB_ERR)
+        INT iDev = ComboBox_GetCurSel(hCmb1);
+        if (iDev == CB_ERR || size_t(iDev) >= m_devices.size())
             return;
+
+        HWND hCmb2 = GetDlgItem(hwnd, cmb2);
+        INT iFormat = ComboBox_GetCurSel(hCmb2);
+        if (iFormat == CB_ERR || size_t(iFormat) >= m_formats.size())
+            return;
+
+        auto& format = m_formats[iFormat];
+        m_rec.SetInfo(format.channels, format.samples, format.bits);
 
         m_rec.SetDevice(m_devices[iDev]);
         if (m_rec.Start())
         {
             EnableWindow(GetDlgItem(hwnd, psh1), FALSE);
             EnableWindow(GetDlgItem(hwnd, psh2), TRUE);
+            EnableWindow(GetDlgItem(hwnd, cmb2), FALSE);
         }
     }
 
@@ -159,6 +182,7 @@ public:
         m_rec.Stop();
         EnableWindow(GetDlgItem(hwnd, psh1), TRUE);
         EnableWindow(GetDlgItem(hwnd, psh2), FALSE);
+        EnableWindow(GetDlgItem(hwnd, cmb2), TRUE);
     }
 
     void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
