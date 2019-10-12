@@ -296,6 +296,7 @@ DWORD Recording::ThreadProc()
     BYTE *pbData;
     UINT32 uNumFrames;
     DWORD dwFlags;
+    BOOL bRecorded = FALSE;
 
     for (UINT32 nPasses = 0; bKeepRecording; nPasses++)
     {
@@ -311,6 +312,7 @@ DWORD Recording::ThreadProc()
 
             if (m_bRecording)
             {
+                bRecorded = TRUE;
                 ::EnterCriticalSection(&m_lock);
                 m_wave_data.insert(m_wave_data.end(), pbData, pbData + cbToWrite);
                 ::LeaveCriticalSection(&m_lock);
@@ -339,7 +341,10 @@ DWORD Recording::ThreadProc()
         }
     }
 
-    SaveToFile();
+    if (bRecorded)
+    {
+        SaveToFile();
+    }
 
     return 0;
 }
