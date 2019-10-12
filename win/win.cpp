@@ -106,12 +106,16 @@ class MMainWnd
 {
     HINSTANCE m_hInst;
     HWND m_hwnd;
+    BOOL m_bInit;
     devices_t m_devices;
     Recording m_rec;
     std::vector<WAVE_FORMAT_INFO> m_formats;
 
 public:
-    MMainWnd(HINSTANCE hInst) : m_hInst(hInst), m_hwnd(NULL)
+    MMainWnd(HINSTANCE hInst)
+        : m_hInst(hInst)
+        , m_hwnd(NULL)
+        , m_bInit(FALSE)
     {
         ::InitCommonControls();
 
@@ -149,13 +153,23 @@ public:
 
         EnableWindow(GetDlgItem(hwnd, psh1), TRUE);
         EnableWindow(GetDlgItem(hwnd, psh2), FALSE);
+        EnableWindow(GetDlgItem(hwnd, cmb1), TRUE);
         EnableWindow(GetDlgItem(hwnd, cmb2), TRUE);
+
+        m_bInit = TRUE;
+        UpdateDevice(hwnd);
+
+        m_rec.StartHearing();
+        SetTimer(hwnd, 999, 300, NULL);
 
         return TRUE;
     }
 
-    void OnPsh1(HWND hwnd)
+    void UpdateDevice(HWND hwnd)
     {
+        if (!m_bInit)
+            return;
+
         HWND hCmb1 = GetDlgItem(hwnd, cmb1);
         INT iDev = ComboBox_GetCurSel(hCmb1);
         if (iDev == CB_ERR || size_t(iDev) >= m_devices.size())
@@ -168,26 +182,55 @@ public:
 
         auto& format = m_formats[iFormat];
         m_rec.SetInfo(format.channels, format.samples, format.bits);
-
         m_rec.SetDevice(m_devices[iDev]);
-        if (m_rec.Start())
-        {
-            EnableWindow(GetDlgItem(hwnd, psh1), FALSE);
-            EnableWindow(GetDlgItem(hwnd, psh2), TRUE);
-            EnableWindow(GetDlgItem(hwnd, cmb2), FALSE);
+    }
 
-            SetTimer(hwnd, 999, 300, NULL);
-        }
+    void OnCmb1(HWND hwnd)
+    {
+        KillTimer(hwnd, 999);
+        m_rec.StopHearing();
+
+        UpdateDevice(hwnd);
+
+        m_rec.StartHearing();
+        SetTimer(hwnd, 999, 300, NULL);
+    }
+
+    void OnCmb2(HWND hwnd)
+    {
+        KillTimer(hwnd, 999);
+        m_rec.StopHearing();
+
+        UpdateDevice(hwnd);
+
+        m_rec.StartHearing();
+        SetTimer(hwnd, 999, 300, NULL);
+    }
+
+    void OnPsh1(HWND hwnd)
+    {
+        m_rec.SetRecording(TRUE);
+
+        EnableWindow(GetDlgItem(hwnd, psh1), FALSE);
+        EnableWindow(GetDlgItem(hwnd, psh2), TRUE);
+        EnableWindow(GetDlgItem(hwnd, cmb1), FALSE);
+        EnableWindow(GetDlgItem(hwnd, cmb2), FALSE);
     }
 
     void OnPsh2(HWND hwnd)
     {
         KillTimer(hwnd, 999);
-        m_rec.Stop();
+        m_rec.StopHearing();
+
         EnableWindow(GetDlgItem(hwnd, psh1), TRUE);
         EnableWindow(GetDlgItem(hwnd, psh2), FALSE);
+        EnableWindow(GetDlgItem(hwnd, cmb1), TRUE);
         EnableWindow(GetDlgItem(hwnd, cmb2), TRUE);
+
         SendDlgItemMessage(hwnd, scr1, PBM_SETPOS, 0, 0);
+
+        m_rec.StartHearing();
+        SetTimer(hwnd, 999, 300, NULL);
     }
 
     void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
@@ -197,7 +240,8 @@ public:
         case IDOK:
         case IDCANCEL:
             KillTimer(hwnd, 999);
-            m_rec.Stop();
+            m_rec.StopHearing();
+
             SendDlgItemMessage(hwnd, scr1, PBM_SETPOS, 0, 0);
             EndDialog(hwnd, id);
             break;
@@ -206,6 +250,18 @@ public:
             break;
         case psh2:
             OnPsh2(hwnd);
+            break;
+        case cmb1:
+            if (codeNotify == CBN_SELCHANGE)
+            {
+                OnCmb1(hwnd);
+            }
+            break;
+        case cmb2:
+            if (codeNotify == CBN_SELCHANGE)
+            {
+                OnCmb2(hwnd);
+            }
             break;
         }
     }

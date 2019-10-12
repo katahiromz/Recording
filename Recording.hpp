@@ -40,8 +40,10 @@ public:
 
     void SetDevice(CComPtr<IMMDevice> pDevice);
 
-    BOOL Start();
-    BOOL Stop();
+    BOOL StartHearing();
+    BOOL StopHearing();
+
+    BOOL SetRecording(BOOL bRecording);
 
     void SaveToFile();
 
@@ -59,6 +61,7 @@ protected:
     CRITICAL_SECTION m_lock;
     UINT32 m_nFrames;
     std::vector<BYTE> m_wave_data;
+    BOOL m_bRecording;
 
     static DWORD WINAPI ThreadFunction(LPVOID pContext);
     void ScanBuffer(const BYTE *pb, DWORD cb, DWORD dwFlags);

@@ -21,11 +21,12 @@ int JustDoIt(INT iDev)
     Recording rec;
     rec.SetDevice(pDevice);
 
-    rec.Start();
+    rec.StartHearing();
+    rec.SetRecording(TRUE);
     puts("Press Enter key to stop recording");
     fflush(stdout);
     getchar();
-    rec.Stop();
+    rec.StopHearing();
 
     puts("Finish.");
     return 0;

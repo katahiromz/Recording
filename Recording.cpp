@@ -74,6 +74,7 @@ Recording::Recording()
     , m_hShutdownEvent(NULL)
     , m_hWakeUp(NULL)
     , m_hThread(NULL)
+    , m_bRecording(FALSE)
 {
     m_hShutdownEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
     m_hWakeUp = ::CreateEvent(NULL, FALSE, FALSE, NULL);
@@ -121,15 +122,17 @@ void Recording::SetDevice(CComPtr<IMMDevice> pDevice)
     m_pDevice = pDevice;
 }
 
-BOOL Recording::Start()
+BOOL Recording::StartHearing()
 {
     DWORD tid = 0;
     m_hThread = ::CreateThread(NULL, 0, Recording::ThreadFunction, this, 0, &tid);
     return m_hThread != NULL;
 }
 
-BOOL Recording::Stop()
+BOOL Recording::StopHearing()
 {
+    m_bRecording = FALSE;
+
     SetEvent(m_hShutdownEvent);
 
     if (m_pAudioClient)
@@ -146,6 +149,16 @@ BOOL Recording::Stop()
 
     ::PlaySound(NULL, NULL, 0);
 
+    return TRUE;
+}
+
+BOOL Recording::SetRecording(BOOL bRecording)
+{
+    if (!m_hThread)
+    {
+        StartHearing();
+    }
+    m_bRecording = TRUE;
     return TRUE;
 }
 
@@ -296,9 +309,12 @@ DWORD Recording::ThreadProc()
 
             LONG cbToWrite = uNumFrames * nBlockAlign;
 
-            ::EnterCriticalSection(&m_lock);
-            m_wave_data.insert(m_wave_data.end(), pbData, pbData + cbToWrite);
-            ::LeaveCriticalSection(&m_lock);
+            if (m_bRecording)
+            {
+                ::EnterCriticalSection(&m_lock);
+                m_wave_data.insert(m_wave_data.end(), pbData, pbData + cbToWrite);
+                ::LeaveCriticalSection(&m_lock);
+            }
 
             ScanBuffer(pbData, cbToWrite, dwFlags);
 
